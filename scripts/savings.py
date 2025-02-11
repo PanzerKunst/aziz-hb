@@ -32,8 +32,9 @@ class ExcaliburStrategy(PkStrategy):
         super().__init__(connectors, config)
 
         self.processed_data = pd.DataFrame()
-        self.reset_context()
         self.latest_saved_candles_timestamp: float = 0
+
+        self.is_context_initialized: bool = False
 
     def start(self, clock: Clock, timestamp: float) -> None:
         self._last_timestamp = timestamp
@@ -91,6 +92,10 @@ class ExcaliburStrategy(PkStrategy):
         if processed_data_num_rows == 0:
             self.logger().error("create_actions_proposal() > ERROR: processed_data_num_rows == 0")
             return []
+
+        if not self.is_context_initialized:
+            self.reset_context()
+            self.is_context_initialized = True
 
         self.create_actions_proposal_savings()
 
@@ -167,7 +172,7 @@ class ExcaliburStrategy(PkStrategy):
 
         if len(filled_buy_orders) > 0:
             if self.has_avg_position_reached_tp(filled_buy_orders):
-                self.logger().info(f"stop_actions_proposal_tf() > Closing Buy positions at {self.get_current_close()}")
+                self.logger().info(f"stop_actions_proposal_savings() > Closing Buy positions at {self.get_current_close()}")
                 self.close_filled_orders(filled_buy_orders, OrderType.MARKET, CloseType.TAKE_PROFIT)
                 self.reset_context()
 
@@ -192,7 +197,7 @@ class ExcaliburStrategy(PkStrategy):
         return Decimal(high_series.iloc[-1])
 
     #
-    # Context
+    # Context functions
     #
 
     def reset_context(self):
