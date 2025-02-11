@@ -25,6 +25,8 @@ conda activate hummingbot
 ## Connection to trading exchange
 
 ```
+cd aziz-hb
+conda activate hummingbot
 ./start
 ```
 
