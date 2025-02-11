@@ -6,7 +6,7 @@ This bot is the Hummingbot implementation of the PineScript strategy written in
 This strategy is a [V2 script](https://hummingbot.org/scripts/) but written accorging to a custom framework, as it extends
 an intermediate [PkStrategy class](https://github.com/PanzerKunst/aziz-hb/blob/main/scripts/pk/pk_strategy.py)
 The main strategy code is in [/scripts/savings.py](https://github.com/PanzerKunst/aziz-hb/blob/main/scripts/savings.py).
-The Python source for generating YML configuration files is [/scripts/savings_config.py](https://github.com/PanzerKunst/aziz-hb/blob/main/scripts/savings_config.py).
+The Python source for generating Yaml configuration files is [/scripts/savings_config.py](https://github.com/PanzerKunst/aziz-hb/blob/main/scripts/savings_config.py).
 One Yaml file is already generated: [/conf/scripts/conf_savings_SOL.yml](https://github.com/PanzerKunst/aziz-hb/blob/main/conf/scripts/conf_savings_SOL.yml)
 
 ## Installation
