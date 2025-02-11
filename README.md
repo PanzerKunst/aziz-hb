@@ -30,7 +30,8 @@ conda activate hummingbot
 ./start
 ```
 
-Choose a super simple password (1 letter?), as you'll have to input it every time you start Hummingbot.
+If it's the first start, you have to set a password. Rather set a super simple password (1 letter?), as you'll have to
+input it every time you start Hummingbot.
 
 The [default configuration file](https://github.com/PanzerKunst/aziz-hb/blob/main/conf/scripts/conf_savings_SOL.yml)
 trades on the Hyperliquid perpetual exchange (`connector_name: hyperliquid_perpetual`). You have to configure your
