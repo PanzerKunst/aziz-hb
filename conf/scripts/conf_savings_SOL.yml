@@ -1,0 +1,18 @@
+markets: {}
+candles_config:
+- connector: binance
+  interval: 3m
+  max_records: 20
+  trading_pair: SOL-USDT
+controllers_config: []
+config_update_interval: 10
+connector_name: hyperliquid_perpetual
+trading_pair: SOL-USD
+leverage: 20
+unfilled_order_expiration: 60
+limit_take_profit_price_delta_bps: 0
+position_mode: ONEWAY
+amount_quote: 12.0
+pyramiding: 10
+dca_trigger_pct: 0.75
+tp_pct: 2.25
