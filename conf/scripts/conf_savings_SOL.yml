@@ -14,5 +14,5 @@ limit_take_profit_price_delta_bps: 0
 position_mode: ONEWAY
 amount_quote: 11.0
 pyramiding: 10
-dca_trigger_pct: 0.75
-tp_pct: 2.25
+dca_trigger_pct: 0.25
+tp_pct: 1.5
