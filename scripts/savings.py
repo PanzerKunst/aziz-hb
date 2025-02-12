@@ -34,8 +34,6 @@ class ExcaliburStrategy(PkStrategy):
         self.processed_data = pd.DataFrame()
         self.latest_saved_candles_timestamp: float = 0
 
-        self.is_context_initialized: bool = False
-
     def start(self, clock: Clock, timestamp: float) -> None:
         self._last_timestamp = timestamp
         self.apply_initial_setting()
@@ -93,9 +91,8 @@ class ExcaliburStrategy(PkStrategy):
             self.logger().error("create_actions_proposal() > ERROR: processed_data_num_rows == 0")
             return []
 
-        if not self.is_context_initialized:
+        if not hasattr(self, "saved_last_dca_price"):
             self.reset_context()
-            self.is_context_initialized = True
 
         self.create_actions_proposal_savings()
 
