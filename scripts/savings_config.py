@@ -37,7 +37,7 @@ class ExcaliburConfig(StrategyV2ConfigBase):
     # Triple Barrier
 
     # Order settings
-    amount_quote: Decimal = 11.0  # Hyperliquid rejects orders less than $10
+    amount_quote: Decimal = 15.0  # Hyperliquid rejects orders less than $10
     pyramiding: int = 10
     dca_trigger_pct: Decimal = 0.75
     tp_pct: Decimal = 2.25
