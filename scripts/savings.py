@@ -125,6 +125,11 @@ class ExcaliburStrategy(PkStrategy):
 
                 custom_status.append(format_df_for_printout(self.processed_data[columns_to_display].tail(20), table_format="psql"))
 
+            other_df: pd.DataFrame = pd.DataFrame(columns=["Buy counter", "Last DCA price", "DCA threshold"])
+            other_df.loc[0] = [self.buy_counter, self.saved_last_dca_price, self.compute_dca_threshold()]
+
+            custom_status.append(format_df_for_printout(other_df, table_format="psql"))
+
         return original_status + "\n".join(custom_status)
 
     #
@@ -216,7 +221,7 @@ class ExcaliburStrategy(PkStrategy):
 
     def is_current_dca_price_below_threshold(self) -> bool:
         current_price: Decimal = self.get_current_close()
-        dca_threshold: Decimal = self.saved_last_dca_price * (1 - self.config.dca_trigger_pct / 100)
+        dca_threshold: Decimal = self.compute_dca_threshold()
 
         is_below_threshold: bool = current_price < dca_threshold
 
@@ -224,6 +229,9 @@ class ExcaliburStrategy(PkStrategy):
             self.logger().info(f"is_current_price_below_dca_threshold() | current_price:{current_price} | dca_threshold:{dca_threshold}")
 
         return is_below_threshold
+
+    def compute_dca_threshold(self) -> Decimal:
+        return self.saved_last_dca_price * (1 - self.config.dca_trigger_pct / 100)
 
     def has_avg_position_reached_tp(self, filled_buy_orders: List[TrackedOrderDetails]) -> bool:
         avg_position_price: Decimal = self.compute_avg_position_price(filled_buy_orders)
