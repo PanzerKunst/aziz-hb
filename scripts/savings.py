@@ -126,10 +126,10 @@ class ExcaliburStrategy(PkStrategy):
 
                 custom_status.append(format_df_for_printout(self.processed_data[columns_to_display].tail(20), table_format="psql"))
 
-            other_df: pd.DataFrame = pd.DataFrame(columns=["Buy counter", "Last DCA price", "DCA threshold"])
-            other_df.loc[0] = [self.buy_counter, self.saved_last_dca_price, self.compute_dca_threshold()]
+            savings_status_df: pd.DataFrame = pd.DataFrame(columns=["Buy counter", "Last DCA price", "DCA threshold"])
+            savings_status_df.loc[0] = [self.buy_counter, self.saved_last_dca_price, self.compute_dca_threshold()]
 
-            custom_status.append(format_df_for_printout(other_df, table_format="psql"))
+            custom_status.append(format_df_for_printout(savings_status_df, table_format="psql"))
 
         return original_status + "\n".join(custom_status)
 
