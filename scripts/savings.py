@@ -11,6 +11,7 @@ from hummingbot.strategy_v2.models.executor_actions import CreateExecutorAction,
 from hummingbot.strategy_v2.models.executors import CloseType
 from scripts.pk.pk_strategy import PkStrategy
 from scripts.pk.pk_triple_barrier import TripleBarrier
+from scripts.pk.pk_utils import compute_take_profit_price
 from scripts.pk.tracked_order_details import TrackedOrderDetails
 from scripts.savings_config import ExcaliburConfig
 
@@ -163,9 +164,10 @@ class ExcaliburStrategy(PkStrategy):
         if len(active_tracked_orders) >= self.config.pyramiding:
             return False
 
-        if self.is_current_dca_price_below_threshold():
-            self.logger().info(f"can_create_savings_order() > Opening Buy #{self.buy_counter + 1} at {self.get_current_close()}")
-            return True
+        if side == TradeType.BUY:
+            if self.is_current_dca_price_below_threshold():
+                self.logger().info(f"can_create_savings_order() > Opening Buy #{self.buy_counter + 1} at {self.get_current_close()}")
+                return True
 
         return False
 
@@ -173,7 +175,7 @@ class ExcaliburStrategy(PkStrategy):
         _, filled_buy_orders = self.get_filled_tracked_orders_by_side(ORDER_REF)
 
         if len(filled_buy_orders) > 0:
-            if self.has_avg_position_reached_tp(filled_buy_orders):
+            if self.has_avg_position_reached_tp(TradeType.BUY, filled_buy_orders):
                 self.logger().info(f"stop_actions_proposal_savings() > Closing Buy positions at {self.get_current_close()}")
                 self.close_filled_orders(filled_buy_orders, OrderType.MARKET, CloseType.TAKE_PROFIT)
                 self.reset_context()
@@ -233,15 +235,15 @@ class ExcaliburStrategy(PkStrategy):
     def compute_dca_threshold(self) -> Decimal:
         return self.saved_last_dca_price * (1 - self.config.dca_trigger_pct / 100)
 
-    def has_avg_position_reached_tp(self, filled_buy_orders: List[TrackedOrderDetails]) -> bool:
+    def has_avg_position_reached_tp(self, side: TradeType, filled_buy_orders: List[TrackedOrderDetails]) -> bool:
         avg_position_price: Decimal = self.compute_avg_position_price(filled_buy_orders)
-        tp_price: Decimal = avg_position_price * (1 + self.config.tp_pct / 100)
+        tp_price: Decimal = compute_take_profit_price(side, avg_position_price, self.config.tp_pct / 100)
 
         current_price: Decimal = self.get_current_close()
         has_reached_tp: bool = current_price > tp_price
 
-        # TODO: remove
-        self.logger().info(f"has_avg_position_reached_tp() | avg_position_price:{avg_position_price} | tp_price:{tp_price} | current_price:{current_price}")
+        if has_reached_tp:
+            self.logger().info(f"has_avg_position_reached_tp() | avg_position_price:{avg_position_price} | tp_price:{tp_price} | current_price:{current_price}")
 
         return has_reached_tp
 
