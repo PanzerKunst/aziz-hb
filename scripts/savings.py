@@ -159,7 +159,7 @@ class ExcaliburStrategy(PkStrategy):
             return False
 
         if self.is_current_dca_price_below_threshold():
-            self.logger().info(f"can_create_savings_order() > Opening Buy at {self.get_current_close()}")
+            self.logger().info(f"can_create_savings_order() > Opening Buy #{self.buy_counter + 1} at {self.get_current_close()}")
             return True
 
         return False
