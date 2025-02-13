@@ -252,6 +252,9 @@ class ExcaliburStrategy(PkStrategy):
     def compute_avg_position_price(self) -> Decimal:
         _, filled_buy_orders = self.get_filled_tracked_orders_by_side(ORDER_REF)
 
+        if len(filled_buy_orders) == 0:
+            return Decimal(0)
+
         total_amount = sum(order.filled_amount for order in filled_buy_orders)
         total_cost = sum(order.filled_amount * order.last_filled_price for order in filled_buy_orders)
 
