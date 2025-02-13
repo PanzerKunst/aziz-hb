@@ -296,7 +296,8 @@ class PkStrategy(StrategyV2Base):
             entry_price=first_order.last_filled_price,
             triple_barrier=first_order.triple_barrier,
             ref=first_order.ref,
-            created_at=first_order.created_at
+            created_at=first_order.created_at,
+            filled_amount=abs(combined_filled_amount)
         )
 
         self.logger().info(f"combine_filled_orders | result:{result}")
