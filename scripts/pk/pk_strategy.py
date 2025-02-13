@@ -15,7 +15,6 @@ from hummingbot.strategy_v2.executors.position_executor.data_types import Positi
 from hummingbot.strategy_v2.models.executors import CloseType
 from scripts.pk.pk_triple_barrier import TripleBarrier
 from scripts.pk.pk_utils import (
-    combine_filled_orders,
     compute_take_profit_price,
     has_current_price_reached_stop_loss,
     has_current_price_reached_take_profit,
@@ -261,11 +260,48 @@ class PkStrategy(StrategyV2Base):
         if len(filled_orders) == 0:
             return
 
-        combined_order: TrackedOrderDetails = combine_filled_orders(filled_orders)
+        combined_order: TrackedOrderDetails = self.combine_filled_orders(filled_orders)
         self.close_filled_order(combined_order, market_or_limit, close_type)
 
         for filled_order in filled_orders:
             self.cancel_take_profit_for_order(filled_order)
+
+    # TODO: move to pk_utils.py
+    def combine_filled_orders(self, filled_orders: List[TrackedOrderDetails]) -> TrackedOrderDetails:
+        non_terminated_filled_orders = [order for order in filled_orders if not order.terminated_at]
+        combined_filled_amount: Decimal = Decimal(0)
+
+        self.logger().info(f"combine_filled_orders | len(non_terminated_filled_orders): {len(non_terminated_filled_orders)}")
+
+        for order in non_terminated_filled_orders:
+            if order.side == TradeType.SELL:
+                combined_filled_amount -= order.filled_amount
+                self.logger().info(f"combine_filled_orders > order.side == TradeType.SELL | combined_filled_amount: {combined_filled_amount}")
+
+            else:
+                combined_filled_amount += order.filled_amount
+                self.logger().info(f"combine_filled_orders > order.side == TradeType.BUY | combined_filled_amount: {combined_filled_amount}")
+
+        first_order = filled_orders[0]
+
+        self.logger().info(f"combine_filled_orders | abs(combined_filled_amount): {abs(combined_filled_amount)}")
+
+        # TODO: remove intermediate var
+        result = TrackedOrderDetails(
+            connector_name=first_order.connector_name,
+            trading_pair=first_order.trading_pair,
+            side=TradeType.SELL if combined_filled_amount < 0 else TradeType.BUY,
+            order_id="combined",
+            amount=abs(combined_filled_amount),
+            entry_price=first_order.last_filled_price,
+            triple_barrier=first_order.triple_barrier,
+            ref=first_order.ref,
+            created_at=first_order.created_at
+        )
+
+        self.logger().info(f"combine_filled_orders | result:{result}")
+
+        return result
 
     def cancel_unfilled_order(self, tracked_order: TrackedOrderDetails):
         connector_name = tracked_order.connector_name

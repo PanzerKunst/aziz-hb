@@ -15,4 +15,4 @@ position_mode: ONEWAY
 amount_quote: 15.0
 pyramiding: 3
 dca_trigger_pct: 0.1
-tp_pct: 0.1
+tp_pct: 0.3
