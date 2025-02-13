@@ -260,11 +260,25 @@ class PkStrategy(StrategyV2Base):
         if len(filled_orders) == 0:
             return
 
+        for filled_order in filled_orders:
+            self.cancel_take_profit_for_order(filled_order)
+
+        if len(filled_orders) == 1:
+            self.close_filled_order(filled_orders[0], market_or_limit, close_type)
+            return
+
         combined_order: TrackedOrderDetails = self.combine_filled_orders(filled_orders)
         self.close_filled_order(combined_order, market_or_limit, close_type)
 
+        current_timestamp: float = self.get_market_data_provider_time()
+        tracked_orders_by_id = {order.order_id: order for order in self.tracked_orders}
+
         for filled_order in filled_orders:
-            self.cancel_take_profit_for_order(filled_order)
+            order = tracked_orders_by_id.get(filled_order.order_id)
+
+            if order:
+                order.terminated_at = current_timestamp
+                order.close_type = close_type
 
     # TODO: move to pk_utils.py
     def combine_filled_orders(self, filled_orders: List[TrackedOrderDetails]) -> TrackedOrderDetails:
