@@ -15,6 +15,7 @@ from hummingbot.strategy_v2.executors.position_executor.data_types import Positi
 from hummingbot.strategy_v2.models.executors import CloseType
 from scripts.pk.pk_triple_barrier import TripleBarrier
 from scripts.pk.pk_utils import (
+    combine_filled_orders,
     compute_take_profit_price,
     has_current_price_reached_stop_loss,
     has_current_price_reached_take_profit,
@@ -257,8 +258,13 @@ class PkStrategy(StrategyV2Base):
                 break
 
     def close_filled_orders(self, filled_orders: List[TrackedOrderDetails], market_or_limit: OrderType, close_type: CloseType):
+        if len(filled_orders) == 0:
+            return
+
+        combined_order: TrackedOrderDetails = combine_filled_orders(filled_orders)
+        self.close_filled_order(combined_order, market_or_limit, close_type)
+
         for filled_order in filled_orders:
-            self.close_filled_order(filled_order, market_or_limit, close_type)
             self.cancel_take_profit_for_order(filled_order)
 
     def cancel_unfilled_order(self, tracked_order: TrackedOrderDetails):

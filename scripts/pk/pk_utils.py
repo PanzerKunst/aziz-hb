@@ -116,6 +116,32 @@ def was_an_order_recently_opened(tracked_orders: List[TrackedOrderDetails], seco
     return most_recent_created_at + seconds > current_timestamp
 
 
+def combine_filled_orders(filled_orders: List[TrackedOrderDetails]) -> TrackedOrderDetails:
+    non_terminated_filled_orders = [order for order in filled_orders if not order.terminated_at]
+    combined_filled_amount: Decimal = Decimal(0)
+
+    for order in non_terminated_filled_orders:
+        if order.side == TradeType.SELL:
+            combined_filled_amount -= order.filled_amount
+
+        else:
+            combined_filled_amount += order.filled_amount
+
+    first_order = filled_orders[0]
+
+    return TrackedOrderDetails(
+        connector_name=first_order.connector_name,
+        trading_pair=first_order.trading_pair,
+        side=TradeType.SELL if combined_filled_amount < 0 else TradeType.BUY,
+        order_id="combined",
+        amount=abs(combined_filled_amount),
+        entry_price=first_order.last_filled_price,
+        triple_barrier=first_order.triple_barrier,
+        ref=first_order.ref,
+        created_at=first_order.created_at
+    )
+
+
 def timestamp_to_iso(timestamp: float) -> str:
     return datetime.fromtimestamp(timestamp).isoformat()
 
