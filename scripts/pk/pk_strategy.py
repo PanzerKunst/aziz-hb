@@ -235,6 +235,13 @@ class PkStrategy(StrategyV2Base):
     #     else:
     #         self.cancel_unfilled_order(tracked_order)
 
+    def update_order_to_closed(self, order_id: str, close_type: CloseType, timestamp: float):
+        for order in self.tracked_orders:
+            if order.order_id == order_id:
+                order.terminated_at = timestamp
+                order.close_type = close_type
+                break
+
     def close_filled_order(self, filled_order: TrackedOrderDetails, market_or_limit: OrderType, close_type: CloseType):
         connector_name = filled_order.connector_name
         trading_pair = filled_order.trading_pair
@@ -250,16 +257,62 @@ class PkStrategy(StrategyV2Base):
         else:
             self.sell(connector_name, trading_pair, filled_amount, market_or_limit, close_price_buy, PositionAction.CLOSE)
 
-        for order in self.tracked_orders:
-            if order.order_id == filled_order.order_id:
-                order.terminated_at = self.get_market_data_provider_time()
-                order.close_type = close_type
-                break
+        self.update_order_to_closed(filled_order.order_id, close_type, self.get_market_data_provider_time())
 
     def close_filled_orders(self, filled_orders: List[TrackedOrderDetails], market_or_limit: OrderType, close_type: CloseType):
+        if len(filled_orders) == 0:
+            return
+
         for filled_order in filled_orders:
-            self.close_filled_order(filled_order, market_or_limit, close_type)
             self.cancel_take_profit_for_order(filled_order)
+
+        if len(filled_orders) == 1:
+            self.close_filled_order(filled_orders[0], market_or_limit, close_type)
+            return
+
+        combined_order: TrackedOrderDetails = self.combine_filled_orders(filled_orders)
+        self.close_filled_order(combined_order, market_or_limit, close_type)
+
+        for filled_order in filled_orders:
+            self.update_order_to_closed(filled_order.order_id, close_type, self.get_market_data_provider_time())
+
+    # TODO: move to pk_utils.py
+    def combine_filled_orders(self, filled_orders: List[TrackedOrderDetails]) -> TrackedOrderDetails:
+        non_terminated_filled_orders = [order for order in filled_orders if not order.terminated_at]
+        combined_filled_amount: Decimal = Decimal(0)
+
+        self.logger().info(f"combine_filled_orders | len(non_terminated_filled_orders): {len(non_terminated_filled_orders)}")
+
+        for order in non_terminated_filled_orders:
+            if order.side == TradeType.SELL:
+                combined_filled_amount -= order.filled_amount
+                self.logger().info(f"combine_filled_orders > order.side == TradeType.SELL | combined_filled_amount: {combined_filled_amount}")
+
+            else:
+                combined_filled_amount += order.filled_amount
+                self.logger().info(f"combine_filled_orders > order.side == TradeType.BUY | combined_filled_amount: {combined_filled_amount}")
+
+        first_order = filled_orders[0]
+
+        self.logger().info(f"combine_filled_orders | abs(combined_filled_amount): {abs(combined_filled_amount)}")
+
+        # TODO: remove intermediate var
+        result = TrackedOrderDetails(
+            connector_name=first_order.connector_name,
+            trading_pair=first_order.trading_pair,
+            side=TradeType.SELL if combined_filled_amount < 0 else TradeType.BUY,
+            order_id="combined",
+            amount=abs(combined_filled_amount),
+            entry_price=first_order.last_filled_price,
+            triple_barrier=first_order.triple_barrier,
+            ref=first_order.ref,
+            created_at=first_order.created_at,
+            filled_amount=abs(combined_filled_amount)
+        )
+
+        self.logger().info(f"combine_filled_orders | result:{result}")
+
+        return result
 
     def cancel_unfilled_order(self, tracked_order: TrackedOrderDetails):
         connector_name = tracked_order.connector_name
@@ -330,8 +383,7 @@ class PkStrategy(StrategyV2Base):
 
                             if tracked_order.filled_amount == 0:
                                 self.logger().info("did_fill_order > tracked_order.filled_amount == 0! Closing it")
-                                tracked_order.terminated_at = filled_event.timestamp
-                                tracked_order.close_type = CloseType.TAKE_PROFIT
+                                self.update_order_to_closed(tracked_order.order_id, CloseType.TAKE_PROFIT, filled_event.timestamp)
 
                             break
 
@@ -359,12 +411,7 @@ class PkStrategy(StrategyV2Base):
 
     def did_cancel_order(self, cancelled_event: OrderCancelledEvent):
         self.logger().info(f"did_cancel_order | cancelled_event:{cancelled_event}")
-
-        for order in self.tracked_orders:
-            if order.order_id == cancelled_event.order_id:
-                order.terminated_at = self.get_market_data_provider_time()
-                order.close_type = CloseType.EXPIRED
-                break
+        self.update_order_to_closed(cancelled_event.order_id, CloseType.EXPIRED, self.get_market_data_provider_time())
 
         for order in self.take_profit_limit_orders:
             if order.order_id == cancelled_event.order_id:

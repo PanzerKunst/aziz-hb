@@ -11,7 +11,7 @@ from hummingbot.strategy_v2.models.executor_actions import CreateExecutorAction,
 from hummingbot.strategy_v2.models.executors import CloseType
 from scripts.pk.pk_strategy import PkStrategy
 from scripts.pk.pk_triple_barrier import TripleBarrier
-from scripts.pk.pk_utils import compute_take_profit_price
+from scripts.pk.pk_utils import compute_avg_position_price, compute_take_profit_price
 from scripts.pk.tracked_order_details import TrackedOrderDetails
 from scripts.savings_config import ExcaliburConfig
 
@@ -126,8 +126,10 @@ class ExcaliburStrategy(PkStrategy):
 
                 custom_status.append(format_df_for_printout(self.processed_data[columns_to_display].tail(20), table_format="psql"))
 
-            savings_status_df: pd.DataFrame = pd.DataFrame(columns=["Buy counter", "Last DCA price", "DCA threshold"])
-            savings_status_df.loc[0] = [self.buy_counter, self.saved_last_dca_price, self.compute_dca_threshold()]
+            savings_status_df: pd.DataFrame = pd.DataFrame(columns=["Buy counter", "Last DCA price", "DCA threshold", "Avg position price", "TP"])
+            avg_position_price: Decimal = self.compute_avg_position_price()
+            tp_price: Decimal = self.compute_tp_price(avg_position_price)
+            savings_status_df.loc[0] = [self.buy_counter, self.saved_last_dca_price, self.compute_dca_threshold(), avg_position_price, tp_price]
 
             custom_status.append(format_df_for_printout(savings_status_df, table_format="psql"))
 
@@ -175,7 +177,7 @@ class ExcaliburStrategy(PkStrategy):
         _, filled_buy_orders = self.get_filled_tracked_orders_by_side(ORDER_REF)
 
         if len(filled_buy_orders) > 0:
-            if self.has_avg_position_reached_tp(TradeType.BUY, filled_buy_orders):
+            if self.has_avg_position_reached_tp():
                 self.logger().info(f"stop_actions_proposal_savings() > Closing Buy positions at {self.get_current_close()}")
                 self.close_filled_orders(filled_buy_orders, OrderType.MARKET, CloseType.TAKE_PROFIT)
                 self.reset_context()
@@ -235,9 +237,9 @@ class ExcaliburStrategy(PkStrategy):
     def compute_dca_threshold(self) -> Decimal:
         return self.saved_last_dca_price * (1 - self.config.dca_trigger_pct / 100)
 
-    def has_avg_position_reached_tp(self, side: TradeType, filled_buy_orders: List[TrackedOrderDetails]) -> bool:
-        avg_position_price: Decimal = self.compute_avg_position_price(filled_buy_orders)
-        tp_price: Decimal = compute_take_profit_price(side, avg_position_price, self.config.tp_pct / 100)
+    def has_avg_position_reached_tp(self) -> bool:
+        avg_position_price: Decimal = self.compute_avg_position_price()
+        tp_price: Decimal = self.compute_tp_price(avg_position_price)
 
         current_price: Decimal = self.get_current_close()
         has_reached_tp: bool = current_price > tp_price
@@ -247,9 +249,9 @@ class ExcaliburStrategy(PkStrategy):
 
         return has_reached_tp
 
-    @staticmethod
-    def compute_avg_position_price(filled_buy_orders: List[TrackedOrderDetails]) -> Decimal:
-        total_amount = sum(order.filled_amount for order in filled_buy_orders)
-        total_cost = sum(order.filled_amount * order.last_filled_price for order in filled_buy_orders)
+    def compute_avg_position_price(self) -> Decimal:
+        _, filled_buy_orders = self.get_filled_tracked_orders_by_side(ORDER_REF)
+        return compute_avg_position_price(filled_buy_orders)
 
-        return Decimal(total_cost / total_amount)
+    def compute_tp_price(self, position_price: Decimal) -> Decimal:
+        return compute_take_profit_price(TradeType.BUY, position_price, self.config.tp_pct / 100)
