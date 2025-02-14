@@ -11,7 +11,7 @@ from hummingbot.strategy_v2.models.executor_actions import CreateExecutorAction,
 from hummingbot.strategy_v2.models.executors import CloseType
 from scripts.pk.pk_strategy import PkStrategy
 from scripts.pk.pk_triple_barrier import TripleBarrier
-from scripts.pk.pk_utils import compute_take_profit_price
+from scripts.pk.pk_utils import compute_avg_position_price, compute_take_profit_price
 from scripts.pk.tracked_order_details import TrackedOrderDetails
 from scripts.savings_config import ExcaliburConfig
 
@@ -251,14 +251,7 @@ class ExcaliburStrategy(PkStrategy):
 
     def compute_avg_position_price(self) -> Decimal:
         _, filled_buy_orders = self.get_filled_tracked_orders_by_side(ORDER_REF)
-
-        if len(filled_buy_orders) == 0:
-            return Decimal(0)
-
-        total_amount = sum(order.filled_amount for order in filled_buy_orders)
-        total_cost = sum(order.filled_amount * order.last_filled_price for order in filled_buy_orders)
-
-        return Decimal(total_cost / total_amount)
+        return compute_avg_position_price(filled_buy_orders)
 
     def compute_tp_price(self, position_price: Decimal) -> Decimal:
         return compute_take_profit_price(TradeType.BUY, position_price, self.config.tp_pct / 100)

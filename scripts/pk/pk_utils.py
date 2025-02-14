@@ -58,6 +58,16 @@ def compute_take_profit_price(side: TradeType, ref_price: Decimal, take_profit_d
     return ref_price * (1 + take_profit_delta)
 
 
+def compute_avg_position_price(filled_orders: List[TrackedOrderDetails]) -> Decimal:
+    if len(filled_orders) == 0:
+        return Decimal(0)
+
+    total_amount = sum(order.filled_amount for order in filled_orders)
+    total_cost = sum(order.filled_amount * order.last_filled_price for order in filled_orders)
+
+    return Decimal(total_cost / total_amount)
+
+
 def has_current_price_reached_stop_loss(tracked_order: TrackedOrderDetails, current_price: Decimal) -> bool:
     stop_loss_delta: Decimal | None = tracked_order.triple_barrier.stop_loss_delta
 
